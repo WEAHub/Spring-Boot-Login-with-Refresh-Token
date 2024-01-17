@@ -87,15 +87,13 @@ Ejemplo practico de como implementar un login con el uso de access/refresh token
 - Si el rol del usuario no es administrador solo podra listarse a si mismo.
 - JSON Body Response
 ```json
-[
-  {
-    "id": 1,
-    "name": "user",
-    "email": "test@test.com",
-    "roles": "USER_ROLES",
-    "password": "$2a$10$mFl7LkZJ.q4vC3cV9KuYs.BnwjhKzeGL3a13uCdMSxS7SmjZr7Zd."
-  },
-]
+{
+  "id": 1,
+  "name": "user",
+  "email": "test@test.com",
+  "roles": "USER_ROLES",
+  "password": "$2a$10$mFl7LkZJ.q4vC3cV9KuYs.BnwjhKzeGL3a13uCdMSxS7SmjZr7Zd."
+},
 ```
 - Error devuelve `403 Forbidden`
 
@@ -105,10 +103,8 @@ Ejemplo practico de como implementar un login con el uso de access/refresh token
 - Si el rol del usuario no es administrador solo podra borrarse a si mismo.
 - JSON Body Response
 ```json
-[
-  {
-    "message": "success"
-  }
-]
+{
+  "message": "success"
+}
 ```
 - Error devuelve `403 Forbidden`
