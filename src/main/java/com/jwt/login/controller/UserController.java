@@ -26,105 +26,131 @@ import java.util.Map;
 @RequestMapping("/auth")
 public class UserController {
 
-    @Autowired
-    private UserInfoService userInfoService;
+  @Autowired
+  private UserInfoService userInfoService;
 
-    @Autowired
-    private AuthenticationManager authenticationManager;
+  @Autowired
+  private AuthenticationManager authenticationManager;
 
-    @Autowired
-    private JwtService jwtService;
+  @Autowired
+  private JwtService jwtService;
 
-    @PostMapping("/addUser")
-    public Map<String, String> addUser(@RequestBody UserInfo userInfo) throws BadRequestException{
+  @PostMapping("/addUser")
+  public Map<String, String> addUser(@RequestBody UserInfo userInfo) throws BadRequestException{
 
-      Boolean alreadyExist = userInfoService.userExists(userInfo.getName());
+    Boolean alreadyExist = userInfoService.userExists(userInfo.getName());
 
-      if(alreadyExist){
-        throw new BadRequestException("User already exists");
-      }
-
-      userInfoService.addUser(userInfo);
-
-      return Collections.singletonMap("message", "success");
+    if(alreadyExist){
+      throw new BadRequestException("User already exists");
     }
 
-    @PostMapping(
-      value = "/login", 
-      produces = MediaType.APPLICATION_JSON_VALUE
-    )
-    public Map<String, String> login(@RequestBody AuthRequest authRequest){
+    userInfoService.addUser(userInfo);
 
-      UsernamePasswordAuthenticationToken userAuthToken = 
-        new UsernamePasswordAuthenticationToken(
-          authRequest.getUserName(), 
-          authRequest.getPassword()
-        );
+    return Collections.singletonMap("message", "success");
+  }
 
-      Authentication authenticate = authenticationManager.authenticate(userAuthToken);
-      
-      if(!authenticate.isAuthenticated()){
-        throw new UsernameNotFoundException("Invalid user request");
-      }
+  @PostMapping(
+    value = "/login", 
+    produces = MediaType.APPLICATION_JSON_VALUE
+  )
+  public Map<String, String> login(@RequestBody AuthRequest authRequest){
 
-      String userName = authRequest.getUserName();
-      String jwtToken = jwtService.generateAccessToken(userName);
-      String jwtRefreshToken = jwtService.generateRefreshToken(userName);
+    UsernamePasswordAuthenticationToken userAuthToken = 
+      new UsernamePasswordAuthenticationToken(
+        authRequest.getUserName(), 
+        authRequest.getPassword()
+      );
 
-      HashMap<String, String> jsonResponse = new HashMap<>();
-      jsonResponse.put("accessToken", jwtToken);
-      jsonResponse.put("refreshToken", jwtRefreshToken);
-
-      return jsonResponse;
+    Authentication authenticate = authenticationManager.authenticate(userAuthToken);
+    
+    if(!authenticate.isAuthenticated()){
+      throw new UsernameNotFoundException("Invalid user request");
     }
 
-    @GetMapping("/refresh")
-    public Map<String, String> refreshToken() {
-      
-      UserInfoDetails userDetails = (UserInfoDetails)SecurityContextHolder
-        .getContext()
-        .getAuthentication()
-        .getPrincipal();
-      
-      String userName = userDetails.getUsername();
-      String jwtToken = jwtService.generateAccessToken(userName);
-      String jwtRefreshToken = jwtService.generateRefreshToken(userName);
+    String userName = authRequest.getUserName();
+    String jwtToken = jwtService.generateAccessToken(userName);
+    String jwtRefreshToken = jwtService.generateRefreshToken(userName);
 
-      HashMap<String, String> jsonResponse = new HashMap<>();
-      jsonResponse.put("accessToken", jwtToken);
-      jsonResponse.put("refreshToken", jwtRefreshToken);
+    HashMap<String, String> jsonResponse = new HashMap<>();
+    jsonResponse.put("accessToken", jwtToken);
+    jsonResponse.put("refreshToken", jwtRefreshToken);
 
-      return jsonResponse;
+    return jsonResponse;
+  }
+
+  @GetMapping("/refresh")
+  public Map<String, String> refreshToken() {
+    
+    UserInfoDetails userDetails = (UserInfoDetails)SecurityContextHolder
+      .getContext()
+      .getAuthentication()
+      .getPrincipal();
+    
+    String userName = userDetails.getUsername();
+    String jwtToken = jwtService.generateAccessToken(userName);
+    String jwtRefreshToken = jwtService.generateRefreshToken(userName);
+
+    HashMap<String, String> jsonResponse = new HashMap<>();
+    jsonResponse.put("accessToken", jwtToken);
+    jsonResponse.put("refreshToken", jwtRefreshToken);
+
+    return jsonResponse;
+  }
+
+  @GetMapping("/getUsers")
+  @PreAuthorize("hasAuthority('ADMIN_ROLES')")
+  public List<UserInfo> getAllUsers(){
+    return userInfoService.getAllUser();
+  }
+
+  @GetMapping("/getUsers/{id}")
+  @PreAuthorize("hasAnyAuthority('ADMIN_ROLES','USER_ROLES')")
+  public UserInfo getAllUsers(@PathVariable Integer id) throws BadRequestException {
+
+    UserInfoDetails userDetails = (UserInfoDetails)SecurityContextHolder
+      .getContext()
+      .getAuthentication()
+      .getPrincipal();
+    
+    Boolean canGetUser = 
+      userDetails.getAuthorities()
+        .stream()
+        .anyMatch(auth -> auth.getAuthority().equals("ADMIN_ROLES")) ||  
+      userDetails.getId() == id;
+
+    
+    if(!canGetUser) {
+      throw new BadRequestException("User already exists");
     }
 
-    @GetMapping("/getUsers")
-    @PreAuthorize("hasAuthority('ADMIN_ROLES')")
-    public List<UserInfo> getAllUsers(){
-      return userInfoService.getAllUser();
+    UserInfo userFound = userInfoService.getUser(id);
+
+    return userFound;
+  }
+
+  @GetMapping("/deleteUser/{id}")
+  @PreAuthorize("hasAnyAuthority('ADMIN_ROLES','USER_ROLES')")
+  public Map<String, String> deleteUser(@PathVariable Integer id) throws BadRequestException {
+    
+    UserInfoDetails userDetails = (UserInfoDetails)SecurityContextHolder
+      .getContext()
+      .getAuthentication()
+      .getPrincipal();
+
+    Boolean canGetUser = 
+      userDetails.getAuthorities()
+        .stream()
+        .anyMatch(auth -> auth.getAuthority().equals("ADMIN_ROLES")) ||  
+      userDetails.getId() == id;
+    
+    String deleteMessage = "failed";
+
+    if(canGetUser) {
+      userInfoService.deleteUserById(id);
+      deleteMessage = "success";
     }
 
-    @GetMapping("/getUsers/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN_ROLES','USER_ROLES')")
-    public UserInfo getAllUsers(@PathVariable Integer id)  throws BadRequestException {
+    return Collections.singletonMap("message", deleteMessage);
+  }
 
-      UserInfoDetails userDetails = (UserInfoDetails)SecurityContextHolder
-        .getContext()
-        .getAuthentication()
-        .getPrincipal();
-      
-      Boolean canGetUser = 
-        userDetails.getAuthorities()
-          .stream()
-          .anyMatch(auth -> auth.getAuthority().equals("ADMIN_ROLES")) ||  
-        userDetails.getId() == id;
-
-      
-      if(!canGetUser) {
-        throw new BadRequestException("User already exists");
-      }
-
-      UserInfo userFound = userInfoService.getUser(id);
-
-      return userFound;
-    }
 }

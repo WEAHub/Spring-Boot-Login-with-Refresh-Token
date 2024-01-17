@@ -98,3 +98,17 @@ Ejemplo practico de como implementar un login con el uso de access/refresh token
 ]
 ```
 - Error devuelve `403 Forbidden`
+
+- --
+
+`GET` **/auth/deleteUser/{id}**
+- Si el rol del usuario no es administrador solo podra borrarse a si mismo.
+- JSON Body Response
+```json
+[
+  {
+    "message": "success"
+  }
+]
+```
+- Error devuelve `403 Forbidden`

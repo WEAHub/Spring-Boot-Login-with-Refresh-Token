@@ -52,4 +52,8 @@ public class UserInfoService implements UserDetailsService {
       return userInfoRepository
         .existsByName(name);
     }
+
+    public void deleteUserById(Integer id) {
+      userInfoRepository.deleteById(id);
+    }
 }
